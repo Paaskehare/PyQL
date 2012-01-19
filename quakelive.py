@@ -65,18 +65,21 @@ class Player:
     weapon = ''
     weapons = {}
     recent_matches = []
+    elo = {'ca': 0, 'duel': 0, 'tdm': 0}
 
     matches = []
 
-    def __init__(self, username, stats=True, weapons=False):
+    def __init__(self, username, stats=True, weapons=False, elo=True):
         self.username = username
         self.contents = ""
-        if stats or weapons:
+        if stats or weapons or elo:
             self.contents = self._get_profile()
             if stats:
                 self.scrape_stats()
             if weapons:
                 self.scrape_weapons()
+            if elo:
+                self._get_elo()
 
     def _tonumber(self, s):
         return int(s.replace(',', ''))
@@ -91,13 +94,23 @@ class Player:
             pass
         return contents
 
+    def _get_elo(self):
+        url = 'http://qlranks.com/api/getElo.aspx?nick=' + quote_plus(self.username)
+        contents = self._get_page(url)
+        if contents:
+            lines = contents.split('\n')
+            for line in lines:
+              l = line.split(':')
+              l[0], l[1] = l[0].strip().lower(), l[1].strip()
+              self.elo[l[0]] = int(l[1]) if not l[1] == 'Not found.' else 0
+
     def _get_profile(self):
         url = 'http://www.quakelive.com/profile/statistics/' + quote_plus(self.username)
         return self._get_page(url)
 
     def _get_week(self, week_date):
         global re_match
-        url = 'http://www.quakelive.com/profile/matches_by_week/%s/%s' % (self.username, week_date)
+        url = 'http://www.quakelive.com/profile/matches_by_week/%s/%s' % (quote_plus(self.username), week_date)
         contents = self._get_page(url)
         week = []
         if contents:
