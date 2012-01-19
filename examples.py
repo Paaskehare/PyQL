@@ -32,6 +32,6 @@ for match in p.matches:
   # It just shows the id
   print(match.id)
 
-# get the actual json data for the first match:
+# get the actual json data for the latest match:
 
 print(p.matches[0])

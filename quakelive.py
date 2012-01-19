@@ -104,7 +104,6 @@ class Player:
             matches = re.finditer(re_match, contents)
             
             week = [match.group(1) for match in matches]
-            week.reverse()
         return week
 
     def scrape_stats(self):
@@ -184,6 +183,7 @@ class Player:
             matches = self._get_week(week)
             for match in matches:
                 self.matches.append(Match(match))
+        self.matches.reverse()
 
 class Match:
     id = ''
