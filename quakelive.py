@@ -73,10 +73,10 @@ class Player:
         self.contents = ""
         if stats or weapons:
             self.contents = self._get_profile()
-        if stats:
-            self.scrape_stats()
-        if weapons:
-            self.scrape_weapons()
+            if stats:
+                self.scrape_stats()
+            if weapons:
+                self.scrape_weapons()
 
     def _tonumber(self, s):
         return int(s.replace(',', ''))
