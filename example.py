@@ -19,3 +19,19 @@ print(p.weapons['rg'])
 p = Player("paaskehare", stats=False, weapons=True)
 for weapon in p.weapons:
   print('%(name)s - Accuracy: %(accuracy)s%% - Usage: %(usage)s%%' % p.weapons[weapon])
+
+# Get matches for the last four week, no stats, and no weapons:
+p = Player("paaskehare", stats=False)
+
+p.get_matches(4) # defaults to last week, but we want the four last weeks
+
+print(len(p.matches)) # number of matches
+
+for match in p.matches:
+  # This doesn't actually scrape the match data
+  # It just shows the id
+  print(match.id)
+
+# get the actual json data for the first match:
+
+print(p.matches[0])

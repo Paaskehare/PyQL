@@ -4,8 +4,10 @@
 from urllib2 import urlopen
 from urllib import quote_plus
 import re
+from datetime import timedelta, date
+import json
 
-weapons_re = re.compile('<div class="col_weapon">(?P<weapon>[\w\s]+)<\/div>\s+'
+re_weapons = re.compile('<div class="col_weapon">(?P<weapon>[\w\s]+)<\/div>\s+'
                         + '<div class="col_frags">(?P<frags>[\d\,]+)<\/div>\s+'
 
                         + '<div class="col_accuracy"( title="Hits: (?P<hits>[\d\,]+) Shots: (?P<shots>[\d\,]+)")?>'
@@ -13,7 +15,7 @@ weapons_re = re.compile('<div class="col_weapon">(?P<weapon>[\w\s]+)<\/div>\s+'
                         + '<div class="col_usage">\s*(?P<usage>\d+)%<\/div>'
                         , re.S)
 
-stats_re = {
+re_stats = {
     'registered': re.compile('<b>Member Since:</b> ([a-zA-Z0-9 \.\,]+)<br />'),
     'playtime': re.compile('<b>Time Played:</b> <span class="text_tooltip" title="Actual Time: ([\d\.:]+)">(\d+) days</span><br />'),
     'lastgame': re.compile('<b>Last Game:</b>\s*<span class="text_tooltip" title="([\d+ /:]+)">(\d+) days ago</span>'),
@@ -25,7 +27,10 @@ stats_re = {
     'arena': re.compile('<b>Arena:</b> ([a-z A-Z0-9\-\_]+)\s*<div', re.S),
     'gametype': re.compile('<b>Game Type:</b> ([a-z A-Z0-9\-\_]+)\s*<div', re.S),
     'weapon': re.compile('<b>Weapon:</b> ([a-z A-Z0-9\-\_]+)\s*<div', re.S),
+    'recentmatches': re.compile('<div class="recent_match[^"]*" id="[a-z]{2,4}_([a-z0-9-]{36})_1"'),
 }
+
+re_match = re.compile('<div class="areaMapC" id="[a-z]{2,4}_([a-z0-9-]{36})_1">')
 
 short_names = {
     'Gauntlet': 'g',
@@ -43,10 +48,10 @@ short_names = {
 }
 
 class Player:
-    registered = ""
+    registered = ''
     playtime = 0
-    playtime_exact = ""
-    lastgame = ""
+    playtime_exact = ''
+    lastgame = ''
     lastgame_days = 0
     kills = 0
     deaths = 0
@@ -55,25 +60,29 @@ class Player:
     quits = 0
     frags = 0
     accuracy = 0.0
-    arena = ""
-    gametype = ""
-    weapon = ""
+    arena = ''
+    gametype = ''
+    weapon = ''
     weapons = {}
+    recent_matches = []
+
+    matches = []
 
     def __init__(self, username, stats=True, weapons=False):
         self.username = username
-        self.contents = self._get_profile()
+        self.contents = ""
+        if stats or weapons:
+            self.contents = self._get_profile()
         if stats:
-          self.scrape_stats()
+            self.scrape_stats()
         if weapons:
-          self.scrape_weapons()
+            self.scrape_weapons()
 
     def _tonumber(self, s):
         return int(s.replace(',', ''))
 
-    def _get_profile(self):
-        url = 'http://www.quakelive.com/profile/statistics/' + quote_plus(self.username)
-        contents = ""
+    def _get_page(self, url):
+        contents = ''
         try:
             page = urlopen(url)
             contents = page.read()
@@ -82,9 +91,25 @@ class Player:
             pass
         return contents
 
+    def _get_profile(self):
+        url = 'http://www.quakelive.com/profile/statistics/' + quote_plus(self.username)
+        return self._get_page(url)
+
+    def _get_week(self, week_date):
+        global re_match
+        url = 'http://www.quakelive.com/profile/matches_by_week/%s/%s' % (self.username, week_date)
+        contents = self._get_page(url)
+        week = []
+        if contents:
+            matches = re.finditer(re_match, contents)
+            
+            week = [match.group(1) for match in matches]
+            week.reverse()
+        return week
+
     def scrape_stats(self):
-        global stats_re
-        r = stats_re
+        global re_stats
+        r = re_stats
  
         if self.contents:
             content = self.contents
@@ -94,8 +119,11 @@ class Player:
             t = r['playtime'].search(content).groups()
             self.playtime, self.playtime_ago = t[0], int(t[1])
 
-            t = r['lastgame'].search(content).groups()
-            self.lastgame, self.lastgame_days = t[0], int(t[1])
+            try:
+              t = r['lastgame'].search(content).groups()
+              self.lastgame, self.lastgame_days = t[0], int(t[1])
+            except:
+              pass
 
             self.wins = self._tonumber(r['wins'].search(content).group(1))
 
@@ -115,11 +143,15 @@ class Player:
             self.gametype = r['gametype'].search(content).group(1)
 
             self.weapon = r['weapon'].search(content).group(1)
+
+            rm = re.finditer(r['recentmatches'], content)
+            for match in rm:
+                self.recent_matches.append(Match(match.group(1)))
             return 1
         return 0
       
     def scrape_weapons(self):
-        global weapons_re, short_names
+        global re_weapons, short_names
         s = short_names
 
         if self.contents:
@@ -136,4 +168,42 @@ class Player:
                     weapon['accuracy'] = int(w.group('accuracy'))
 
                 self.weapons[s[w.group('weapon')]] = weapon
+            return 1
         return 0
+
+    def scrape_matches(self, num_weeks=1):
+        global match_re
+        today = date.today()
+
+        weeks = [(today - timedelta(7 * i)).strftime('%Y-%m-%d') for i in range(num_weeks)]
+
+        from time import time
+        now = int(time())
+
+        for week in weeks:
+            matches = self._get_week(week)
+            for match in matches:
+                self.matches.append(Match(match))
+
+class Match:
+    id = ''
+    def __init__(self, match_id):
+       self.id = match_id
+       self.data = None
+
+    def _get_page(self, url):
+        contents = ''
+        try:
+            page = urlopen(url)
+            contents = page.read()
+            page.close()
+        except:
+            pass
+        return contents 
+
+    def get_json(self):
+        if not self.data:
+            contents = self._get_page("http://www.quakelive.com/stats/matchdetails/%s" % self.id)
+            if contents:
+                self.data = json.loads(contents)
+        return self.data
