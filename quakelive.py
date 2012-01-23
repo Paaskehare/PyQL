@@ -101,8 +101,9 @@ class Player:
             lines = contents.split('\n')
             for line in lines:
               l = line.split(':')
-              l[0], l[1] = l[0].strip().lower(), l[1].strip()
-              self.elo[l[0]] = int(l[1]) if not l[1] == 'Not found.' else 0
+              t, v = l
+              t, v = t.strip().lower(), v.strip()
+              self.elo[t] = int(v) if not v == 'Not found.' else 0
 
     def _get_profile(self):
         url = 'http://www.quakelive.com/profile/statistics/' + quote_plus(self.username)
@@ -188,9 +189,6 @@ class Player:
         today = date.today()
 
         weeks = [(today - timedelta(7 * i)).strftime('%Y-%m-%d') for i in range(num_weeks)]
-
-        from time import time
-        now = int(time())
 
         for week in weeks:
             matches = self._get_week(week)
