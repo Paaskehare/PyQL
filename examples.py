@@ -4,12 +4,12 @@
 from quakelive import Player
 
 # Only get the stats:
-p = Player("ole")
+p = Player("fragtion")
 print(p.gametype)
 print(p.accuracy)
 
 # Get the stats and weapons:
-p = Player("ole", weapons=True)
+p = Player("fragtion", weapons=True)
 
 # Check if player exists:
 if p.exists:
@@ -21,12 +21,12 @@ print(p.weapons['rg']['name'])
 print(p.weapons['rg'])
 
 # Dont get stats, we just need the weapons:
-p = Player("ole", stats=False, weapons=True)
+p = Player("fragtion", stats=False, weapons=True)
 for weapon in p.weapons:
   print('%(name)s - Accuracy: %(accuracy)s%% - Usage: %(usage)s%%' % p.weapons[weapon])
 
 # Get matches for the last four week, no stats, and no weapons:
-p = Player("ole", stats=False)
+p = Player("fragtion", stats=False)
 
 p.scrape_matches(4) # defaults to last week, but we want the four last weeks
 

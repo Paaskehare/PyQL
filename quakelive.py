@@ -17,7 +17,7 @@ re_weapons = re.compile('<div class="col_weapon">(?P<weapon>[\w\s]+)<\/div>\s+'
 
 re_stats = {
     'registered': re.compile('<b>Member Since:</b> ([a-zA-Z0-9 \.\,]+)<br />'),
-    'playtime': re.compile('<b>Time Played:</b> <span class="text_tooltip" title="Ranked Time: ([\d\.:]+) Unranked Time: ([\d\.:]+)">(\d+) days</span><br />'),
+    'playtime': re.compile('<b>Time Played:</b> <span class="text_tooltip" title="Ranked Time: ([\d\.:]+) Unranked Time: ([\d\.:]+)">(.+?)</span><br />'),
     'lastgame': re.compile('<b>Last Game:</b>\s*<span class="text_tooltip" title="([\d+ /:]+)">(\d+) days ago</span>'),
     'wins': re.compile('<b>Wins:</b> ([\d\,]+)<br />'),
     'loses': re.compile('<b>Losses / Quits:</b> ([\d\,]+) / ([\d\,]+)<br />'),
@@ -50,7 +50,7 @@ short_names = {
 class Player:
     exists = False
     registered = ''
-    playtime = 0
+    playtime = ''
     playtime_ranked = ''
     playtime_unranked = ''
     lastgame = ''
@@ -133,8 +133,7 @@ class Player:
             self.registered = r['registered'].search(content).group(1)
 
             t = r['playtime'].search(content).groups()
-            print(t)
-            self.playtime_ranked, self.playtime_unranked, self.playtime = t[0], t[1], int(t[2])
+            self.playtime_ranked, self.playtime_unranked, self.playtime = t[0], t[1], t[2]
 
             try:
               t = r['lastgame'].search(content).groups()
