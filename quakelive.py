@@ -17,7 +17,7 @@ re_weapons = re.compile('<div class="col_weapon">(?P<weapon>[\w\s]+)<\/div>\s+'
 
 re_stats = {
     'registered': re.compile('<b>Member Since:</b> ([a-zA-Z0-9 \.\,]+)<br />'),
-    'playtime': re.compile('<b>Time Played:</b> <span class="text_tooltip" title="Actual Time: ([\d\.:]+)">(\d+) days</span><br />'),
+    'playtime': re.compile('<b>Time Played:</b> <span class="text_tooltip" title="Ranked Time: ([\d\.:]+) Unranked Time: ([\d\.:]+)">(\d+) days</span><br />'),
     'lastgame': re.compile('<b>Last Game:</b>\s*<span class="text_tooltip" title="([\d+ /:]+)">(\d+) days ago</span>'),
     'wins': re.compile('<b>Wins:</b> ([\d\,]+)<br />'),
     'loses': re.compile('<b>Losses / Quits:</b> ([\d\,]+) / ([\d\,]+)<br />'),
@@ -48,9 +48,11 @@ short_names = {
 }
 
 class Player:
+    exists = False
     registered = ''
     playtime = 0
-    playtime_exact = ''
+    playtime_ranked = ''
+    playtime_unranked = ''
     lastgame = ''
     lastgame_days = 0
     kills = 0
@@ -124,13 +126,15 @@ class Player:
         global re_stats
         r = re_stats
  
-        if self.contents:
+        if self.contents and 'Player not found: %s</span>' % self.username not in self.contents:
+            self.exists = True
             content = self.contents
 
             self.registered = r['registered'].search(content).group(1)
 
             t = r['playtime'].search(content).groups()
-            self.playtime, self.playtime_ago = t[0], int(t[1])
+            print(t)
+            self.playtime_ranked, self.playtime_unranked, self.playtime = t[0], t[1], int(t[2])
 
             try:
               t = r['lastgame'].search(content).groups()
@@ -168,7 +172,7 @@ class Player:
         s = short_names
 
         if self.contents:
-            weapons = re.finditer(weapons_re, self.contents)
+            weapons = re.finditer(re_weapons, self.contents)
             for w in weapons:
                 weapon = {'hits': 0, 'shots': 0, 'accuracy': 0}
                 weapon['name'] = w.group('weapon')
